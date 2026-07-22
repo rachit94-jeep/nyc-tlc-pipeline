@@ -1,0 +1,19 @@
+services:
+  spark-notebook:
+    build: .
+    container_name: nyc-tlc-spark
+    ports:
+      - "8888:8888"   # Jupyter
+      - "4041:4040"   # Spark UI
+    volumes:
+      - ./spark:/app/spark         # notebooks & jobs (live reload)
+      - ./data:/app/data           # raw / processed data
+      - spark-warehouse:/app/spark-warehouse
+    environment:
+      - SPARK_LOCAL_IP=0.0.0.0
+      - JUPYTER_TOKEN=tlc          # set to "" to disable token auth
+    mem_limit: 6g
+    restart: unless-stopped
+
+volumes:
+  spark-warehouse:

@@ -17,11 +17,15 @@ The environment runs fully containerized — Spark 4.2 on Java 17, with a Jupyte
 ```
 NYC_TLC_PIPELINE/
 ├── data/
-│   ├── input/yellow/       # raw Yellow Taxi parquet files
-│   └── output/yellow/      # processed output, partitioned by pickup_date
+│   ├── input/
+│   │   ├── yellow/         # raw Yellow Taxi parquet files
+│   │   └── green/          # raw Green Taxi parquet files
+│   ├── output/yellow/      # local processed output, partitioned by pickup_date
+│   └── logs/               # pipeline run logs
 ├── spark/
 │   └── jobs/
 │       └── ingest_yellow.ipynb   # Yellow Taxi ingestion notebook
+├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml          # project dependencies
@@ -65,6 +69,36 @@ Input data is the NYC TLC Yellow Taxi trip records in Parquet format, available 
 Place raw files under `data/input/yellow/` (e.g. `yellow_tripdata_2026-04.parquet`).
 
 Processed output is written to `data/output/yellow/`, partitioned by `pickup_date`.
+
+## Derived Columns
+
+The following columns are added during transformation:
+
+| Column | Description |
+|--------|-------------|
+| `trip_duration_minutes` | Duration from pickup to dropoff in minutes |
+| `avg_speed_mph` | Average speed in mph (`trip_distance / (trip_duration_minutes / 60)`); `0` for zero-duration trips |
+| `source_file` | Literal name of the source parquet file |
+| `ingested_at_timestamp` | Timestamp when the record was ingested |
+| `pickup_date` | Date portion of `tpep_pickup_datetime`; used as the partition key |
+
+## S3 Staging
+
+Processed data is written to S3 in addition to local output. The notebook configures the `hadoop-aws` and AWS SDK packages and writes to:
+
+```
+s3a://nyc-tlc-pipeline/yellow/
+```
+
+Partitioned by `pickup_date`, same as local output. AWS credentials are passed via Spark config at session creation:
+
+```python
+.config("spark.hadoop.fs.s3a.access.key", "<AWS_ACCESS_KEY_ID>")
+.config("spark.hadoop.fs.s3a.secret.key", "<AWS_SECRET_ACCESS_KEY>")
+.config("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com")
+```
+
+> **Note:** Do not commit real credentials. Pass them via environment variables or a secrets manager before running.
 
 ## Development
 

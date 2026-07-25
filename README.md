@@ -29,6 +29,8 @@ NYC_TLC_PIPELINE/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml          # project dependencies
+├── .env                    # local environment variables (git-ignored)
+├── .env.example            # environment variable template (committed)
 └── uv.lock
 ```
 
@@ -38,7 +40,17 @@ NYC_TLC_PIPELINE/
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
 
-### Run the pipeline
+### 1. Configure environment variables
+
+Copy the example file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set your AWS credentials and any other values. The file is git-ignored and will never be committed.
+
+### 2. Run the pipeline
 
 Build and start the container:
 
@@ -84,21 +96,45 @@ The following columns are added during transformation:
 
 ## S3 Staging
 
-Processed data is written to S3 in addition to local output. The notebook configures the `hadoop-aws` and AWS SDK packages and writes to:
+Processed data is written to S3 in addition to local output, partitioned by `pickup_date`:
 
 ```
 s3a://nyc-tlc-pipeline/yellow/
 ```
 
-Partitioned by `pickup_date`, same as local output. AWS credentials are passed via Spark config at session creation:
+### AWS SDK
+
+S3 access uses the `hadoop-aws` connector with the AWS SDK v2 bundle. The required JARs are pulled automatically by Spark at session startup via the `spark.jars.packages` config — no manual download needed:
 
 ```python
-.config("spark.hadoop.fs.s3a.access.key", "<AWS_ACCESS_KEY_ID>")
-.config("spark.hadoop.fs.s3a.secret.key", "<AWS_SECRET_ACCESS_KEY>")
-.config("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com")
+.config(
+    "spark.jars.packages",
+    "org.apache.hadoop:hadoop-aws:3.5.0,"
+    "software.amazon.awssdk:bundle:2.31.54"
+)
 ```
 
-> **Note:** Do not commit real credentials. Pass them via environment variables or a secrets manager before running.
+On first run Spark downloads these JARs from Maven Central and caches them in `~/.ivy2/`. Subsequent runs use the cache.
+
+### Credentials
+
+AWS credentials are loaded from `.env` via `python-dotenv` at notebook startup and injected into the Spark session:
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+spark = (
+    SparkSession.builder
+    ...
+    .config("spark.hadoop.fs.s3a.access.key", os.environ["AWS_ACCESS_KEY_ID"])
+    .config("spark.hadoop.fs.s3a.secret.key", os.environ["AWS_SECRET_ACCESS_KEY"])
+    .config("spark.hadoop.fs.s3a.endpoint",   os.environ.get("S3_ENDPOINT", "s3.amazonaws.com"))
+    .getOrCreate()
+)
+```
+
+Never commit real credentials. Keep them in `.env` (git-ignored) or use a secrets manager.
 
 ## Development
 

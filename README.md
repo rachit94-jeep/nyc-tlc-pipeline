@@ -20,16 +20,18 @@ NYC_TLC_PIPELINE/
 │   ├── input/
 │   │   ├── yellow/         # raw Yellow Taxi parquet files
 │   │   ├── green/          # raw Green Taxi parquet files
-│   │   └── fhv/            # raw FHV parquet files
+│   │   ├── fhv/            # raw FHV parquet files
+│   │   └── hvfhv/          # raw High-Volume FHV parquet files
 │   ├── output/
 │   │   ├── yellow/         # processed output, partitioned by pickup_date
-│   │   └── green/          # processed output, partitioned by pickup_date
+│   │   ├── green/          # processed output, partitioned by pickup_date
+│   │   └── fhv/            # processed output, partitioned by pickup_date
 │   └── logs/               # pipeline run logs per taxi type
 ├── spark/
 │   └── jobs/
 │       ├── ingest_yellow.ipynb   # Yellow Taxi ingestion notebook
 │       ├── ingest_green.ipynb    # Green Taxi ingestion notebook
-│       └── ingest_fhv.ipynb      # FHV ingestion notebook (in progress)
+│       └── ingest_fhv.ipynb      # FHV ingestion notebook
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
@@ -87,7 +89,7 @@ Input data is the NYC TLC trip records in Parquet format, available from the
 |-----------|-----------|-------------|---------|
 | Yellow | `data/input/yellow/` | `data/output/yellow/` | `s3a://<bucket>/yellow` |
 | Green | `data/input/green/` | `data/output/green/` | `s3a://<bucket>/green` |
-| FHV | `data/input/fhv/` | — | — |
+| FHV | `data/input/fhv/` | `data/output/fhv/` | `s3a://<bucket>/fhv` |
 
 All output is partitioned by `pickup_date`.
 
@@ -107,6 +109,8 @@ Each notebook follows the same structure:
 
 The following filters are applied before writing output:
 
+**Yellow & Green Taxi**
+
 | Check | Action |
 |-------|--------|
 | Cash payment (`payment_type == 2`) with `tip_amount > 0` | Drop — invalid combination |
@@ -116,9 +120,20 @@ The following filters are applied before writing output:
 | `trip_distance < 0` | Verified absent; filter is a guard |
 | Pickup time after dropoff time | Verified absent; logged as a check |
 
+**FHV**
+
+| Check | Action |
+|-------|--------|
+| Pickup month outside the file's target month | Drop — out-of-range records |
+| Both `PUlocationID` and `DOlocationID` are null | Drop — no location data |
+| `pickup_datetime >= dropOff_datetime` | Drop — zero or negative duration trips |
+| `trip_duration_minutes == 0` (after derivation) | Drop |
+
 ## Derived Columns
 
-The following columns are added during transformation (Yellow and Green):
+The following columns are added during transformation:
+
+**Yellow & Green Taxi**
 
 | Column | Description |
 |--------|-------------|
@@ -127,6 +142,15 @@ The following columns are added during transformation (Yellow and Green):
 | `source_file` | Literal name of the source parquet file |
 | `ingested_at_timestamp` | Timestamp when the record was ingested |
 | `pickup_date` | Date portion of the pickup datetime; used as the partition key |
+
+**FHV**
+
+| Column | Description |
+|--------|-------------|
+| `trip_duration_minutes` | Duration from `pickup_datetime` to `dropOff_datetime` in minutes |
+| `source_file` | Literal name of the source parquet file |
+| `ingestion_timestamp` | Timestamp when the record was ingested |
+| `pickup_date` | Date portion of `pickup_datetime`; used as the partition key |
 
 ## Schema Notes
 
@@ -148,6 +172,7 @@ Each job writes a log file to `/app/data/logs/`:
 |-----|----------|
 | Yellow | `yellow_taxi_trips.log` |
 | Green | `green_taxi_trips.log` |
+| FHV | `fhv_trips.log` |
 
 Logged events: raw row count, post-validation row count, rows written to S3.
 
@@ -158,6 +183,7 @@ Processed data is written to S3 partitioned by `pickup_date`. The target bucket 
 ```
 s3a://<S3_BUCKET>/yellow/
 s3a://<S3_BUCKET>/green/
+s3a://<S3_BUCKET>/fhv/
 ```
 
 ### AWS SDK

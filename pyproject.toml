@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "dotenv>=0.9.9",
     "pyspark>=4.2.0",
     "python-dotenv>=1.0.0",
 ]

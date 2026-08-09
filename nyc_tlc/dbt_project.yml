@@ -1,0 +1,25 @@
+name: nyc_tlc
+
+profile: nyc_tlc
+
+seed-paths: ["seeds"]
+model-paths: ["models"]
+macro-paths: ["macros"]
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+seeds:
+  # Builds seeds into '<your_schema_name>_raw'
+  nyc_tlc:
+    +schema: LOOKUP
+
+models:
+  nyc_tlc:
+    +static_analysis: strict
+    +schema: STAGING
+    # Materialize staging models as views, and marts as tables
+    staging:
+      +materialized: table
+    marts:
+      +materialized: table

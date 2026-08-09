@@ -21,17 +21,19 @@ NYC_TLC_PIPELINE/
 │   │   ├── yellow/         # raw Yellow Taxi parquet files
 │   │   ├── green/          # raw Green Taxi parquet files
 │   │   ├── fhv/            # raw FHV parquet files
-│   │   └── hvfhv/          # raw High-Volume FHV parquet files
+│   │   └── hvfhv/          # raw High-Volume FHV (Uber, Lyft, etc.) parquet files
 │   ├── output/
 │   │   ├── yellow/         # processed output, partitioned by pickup_date
 │   │   ├── green/          # processed output, partitioned by pickup_date
-│   │   └── fhv/            # processed output, partitioned by pickup_date
+│   │   ├── fhv/            # processed output, partitioned by pickup_date
+│   │   └── hvfhv/          # processed output, partitioned by pickup_date
 │   └── logs/               # pipeline run logs per taxi type
 ├── spark/
 │   └── jobs/
 │       ├── ingest_yellow.ipynb   # Yellow Taxi ingestion notebook
 │       ├── ingest_green.ipynb    # Green Taxi ingestion notebook
-│       └── ingest_fhv.ipynb      # FHV ingestion notebook
+│       ├── ingest_fhv.ipynb      # FHV ingestion notebook
+│       └── ingest_fhvhv.ipynb    # High-Volume FHV ingestion notebook
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
@@ -90,6 +92,7 @@ Input data is the NYC TLC trip records in Parquet format, available from the
 | Yellow | `data/input/yellow/` | `data/output/yellow/` | `s3a://<bucket>/yellow` |
 | Green | `data/input/green/` | `data/output/green/` | `s3a://<bucket>/green` |
 | FHV | `data/input/fhv/` | `data/output/fhv/` | `s3a://<bucket>/fhv` |
+| HVFHV | `data/input/hvfhv/` | `data/output/hvfhv/` | `s3a://<bucket>/hvfhv` |
 
 All output is partitioned by `pickup_date`.
 
@@ -129,6 +132,15 @@ The following filters are applied before writing output:
 | `pickup_datetime >= dropOff_datetime` | Drop — zero or negative duration trips |
 | `trip_duration_minutes == 0` (after derivation) | Drop |
 
+**HVFHV (High-Volume FHV)**
+
+| Check | Action |
+|-------|--------|
+| Pickup month outside the file's target month | Drop — out-of-range records |
+| Both `PULocationID` and `DOLocationID` are null | Drop — no location data |
+| `pickup_datetime >= dropoff_datetime` | Drop — zero or negative duration trips |
+| `trip_duration_minutes == 0` (after derivation) | Drop |
+
 ## Derived Columns
 
 The following columns are added during transformation:
@@ -152,6 +164,15 @@ The following columns are added during transformation:
 | `ingestion_timestamp` | Timestamp when the record was ingested |
 | `pickup_date` | Date portion of `pickup_datetime`; used as the partition key |
 
+**HVFHV**
+
+| Column | Description |
+|--------|-------------|
+| `trip_duration_minutes` | Duration from `pickup_datetime` to `dropoff_datetime` in minutes |
+| `source_file` | Literal name of the source parquet file |
+| `ingestion_timestamp` | Timestamp when the record was ingested |
+| `pickup_date` | Date portion of `pickup_datetime`; used as the partition key |
+
 ## Schema Notes
 
 Yellow and Green Taxi schemas differ in a few columns:
@@ -164,6 +185,26 @@ Yellow and Green Taxi schemas differ in a few columns:
 | E-hail fee | — | `ehail_fee` |
 | Trip type | — | `trip_type` |
 
+HVFHV has a distinct schema from FHV, reflecting the richer data reported by app-based providers (Uber, Lyft, Via):
+
+| Field | Description |
+|-------|-------------|
+| `hvfhs_license_num` | TLC license number of the HVFHV company |
+| `dispatching_base_num` | TLC base number of the dispatching entity |
+| `originating_base_num` | TLC base that originally accepted the trip request |
+| `request_datetime` | When the passenger requested the trip |
+| `on_scene_datetime` | When the driver arrived at pickup |
+| `pickup_datetime` / `dropoff_datetime` | Trip start and end times |
+| `trip_miles` | Distance travelled in miles |
+| `trip_time` | Trip duration in seconds (raw field) |
+| `base_passenger_fare` | Base fare before surcharges and tips |
+| `tolls`, `bcf`, `sales_tax`, `congestion_surcharge`, `airport_fee`, `cbd_congestion_fee` | Itemised surcharges |
+| `tips` | Tip amount |
+| `driver_pay` | Total driver compensation |
+| `shared_request_flag` / `shared_match_flag` | Whether passenger requested / was matched into a shared ride |
+| `access_a_ride_flag` | MTA Access-A-Ride trip indicator |
+| `wav_request_flag` / `wav_match_flag` | Wheelchair-accessible vehicle request and match flags |
+
 ## Logging
 
 Each job writes a log file to `/app/data/logs/`:
@@ -173,6 +214,7 @@ Each job writes a log file to `/app/data/logs/`:
 | Yellow | `yellow_taxi_trips.log` |
 | Green | `green_taxi_trips.log` |
 | FHV | `fhv_trips.log` |
+| HVFHV | `fhvhv_trips.log` |
 
 Logged events: raw row count, post-validation row count, rows written to S3.
 
@@ -184,6 +226,7 @@ Processed data is written to S3 partitioned by `pickup_date`. The target bucket 
 s3a://<S3_BUCKET>/yellow/
 s3a://<S3_BUCKET>/green/
 s3a://<S3_BUCKET>/fhv/
+s3a://<S3_BUCKET>/hvfhv/
 ```
 
 ### AWS SDK

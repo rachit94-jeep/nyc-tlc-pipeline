@@ -34,6 +34,8 @@ NYC_TLC_PIPELINE/
 │       ├── ingest_green.ipynb    # Green Taxi ingestion notebook
 │       ├── ingest_fhv.ipynb      # FHV ingestion notebook
 │       └── ingest_fhvhv.ipynb    # High-Volume FHV ingestion notebook
+├── snowflake/
+│   └── nyc_tlc_setup.sql   # Snowflake environment setup and raw table definitions
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
@@ -129,7 +131,7 @@ The following filters are applied before writing output:
 |-------|--------|
 | Pickup month outside the file's target month | Drop — out-of-range records |
 | Both `PUlocationID` and `DOlocationID` are null | Drop — no location data |
-| `pickup_datetime >= dropOff_datetime` | Drop — zero or negative duration trips |
+| `pickup_datetime >= dropOff_datetime` | Count check only — if any exist, drops rows where `pickup_datetime == dropOff_datetime` |
 | `trip_duration_minutes == 0` (after derivation) | Drop |
 
 **HVFHV (High-Volume FHV)**
@@ -138,7 +140,7 @@ The following filters are applied before writing output:
 |-------|--------|
 | Pickup month outside the file's target month | Drop — out-of-range records |
 | Both `PULocationID` and `DOLocationID` are null | Drop — no location data |
-| `pickup_datetime >= dropoff_datetime` | Drop — zero or negative duration trips |
+| `pickup_datetime >= dropoff_datetime` | Count check only — if any exist, drops rows where `pickup_datetime == dropoff_datetime` |
 | `trip_duration_minutes == 0` (after derivation) | Drop |
 
 ## Derived Columns
@@ -262,6 +264,53 @@ spark = (
 ```
 
 Never commit real credentials. Keep them in `.env` (git-ignored) or use a secrets manager.
+
+## Snowflake Setup
+
+[snowflake/nyc_tlc_setup.sql](snowflake/nyc_tlc_setup.sql) provisions the entire Snowflake environment for loading the processed S3 data into raw tables. Run the script once against your Snowflake account using `ACCOUNTADMIN` or equivalent. The steps are:
+
+### Step 1 — Role
+
+Creates a `TRANSFORM` role and grants it to `ACCOUNTADMIN`.
+
+### Step 2 — Warehouse
+
+Creates an `XSMALL` warehouse (`COMPUTE_WH`) that auto-suspends after 5 minutes of inactivity and resumes automatically on query.
+
+### Step 3 — Service user
+
+Creates a `dbt_tlc` legacy-service user with `TRANSFORM` as its default role and `TLC.RAW` as its default namespace. This account is intended for dbt or other programmatic access — not for human login.
+
+### Step 4 — Database & schema
+
+Creates the `TLC` database and a `RAW` schema inside it. All raw tables live in `TLC.RAW`.
+
+### Step 5 — Permissions
+
+Grants the `TRANSFORM` role full privileges on the warehouse, database, all existing schemas and tables in `TLC`, and future schemas and tables in `TLC.RAW` so the role never needs manual re-granting as new objects are added.
+
+### Step 6 — File format
+
+Defines a `PARQUET` file format (`ff_parquet`) used by the external stage and `INFER_SCHEMA` calls.
+
+### Step 7 — External stage
+
+Creates an external stage (`nyc_tlc_stage`) pointing at the S3 bucket where the Spark pipeline writes its output. The stage uses AWS key-based authentication and the parquet file format so Snowflake can read the partitioned output directly.
+
+### Step 8 — Raw tables & data load
+
+Creates one raw table per taxi type, mirroring the schema written by the Spark pipeline (including the derived columns added during ingestion):
+
+| Table | Source S3 prefix | Notes |
+|-------|-----------------|-------|
+| `TLC.RAW.YELLOW_TAXI_TRIPS` | `s3://nyc-tlc-pipeline/yellow` | Includes `avg_speed_mph`, `ingested_at_timestamp` |
+| `TLC.RAW.GREEN_TAXI_TRIPS` | `s3://nyc-tlc-pipeline/green` | Uses `lpep_*` datetime columns; includes `ehail_fee`, `trip_type` |
+| `TLC.RAW.FHV_TRIPS` | `s3://nyc-tlc-pipeline/fhv` | Dispatching-base schema; no fare fields |
+| `TLC.RAW.FHVHV_TRIPS` | `s3://nyc-tlc-pipeline/fhvhv` | Full HVFHV schema with itemised surcharges and ride-share flags |
+
+Each table is loaded with `COPY INTO ... MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE` so column ordering in the parquet files does not matter. Files that fail to load are skipped (`ON_ERROR = 'SKIP_FILE'`) rather than aborting the entire copy. After loading, a `UPDATE ... SET pickup_date = TO_DATE(...)` backfills any rows where the partition date column arrived as `NULL`.
+
+`INFER_SCHEMA` queries are included for FHV and HVFHV as a diagnostic aid — they print the column names and types that Snowflake detects directly from the parquet files, useful for verifying schema alignment before or after a load.
 
 ## Development
 

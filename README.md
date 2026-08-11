@@ -11,6 +11,8 @@ The environment runs fully containerized — Spark 4.2 on Java 17, with a Jupyte
 - **Python 3.11** — managed by [uv](https://github.com/astral-sh/uv)
 - **Jupyter Notebook** — interactive job development
 - **Docker Compose** — container orchestration
+- **Snowflake** — cloud data warehouse (RAW landing + dbt target)
+- **dbt (dbt-fusion 2.0)** — transformation layer (staging → dims → fct → marts)
 
 ## Project Structure
 
@@ -18,16 +20,16 @@ The environment runs fully containerized — Spark 4.2 on Java 17, with a Jupyte
 NYC_TLC_PIPELINE/
 ├── data/
 │   ├── input/
-│   │   ├── yellow/         # raw Yellow Taxi parquet files
-│   │   ├── green/          # raw Green Taxi parquet files
-│   │   ├── fhv/            # raw FHV parquet files
-│   │   └── hvfhv/          # raw High-Volume FHV (Uber, Lyft, etc.) parquet files
+│   │   ├── yellow/               # raw Yellow Taxi parquet files
+│   │   ├── green/                # raw Green Taxi parquet files
+│   │   ├── fhv/                  # raw FHV parquet files
+│   │   └── hvfhv/                # raw High-Volume FHV (Uber, Lyft, etc.) parquet files
 │   ├── output/
-│   │   ├── yellow/         # processed output, partitioned by pickup_date
-│   │   ├── green/          # processed output, partitioned by pickup_date
-│   │   ├── fhv/            # processed output, partitioned by pickup_date
-│   │   └── hvfhv/          # processed output, partitioned by pickup_date
-│   └── logs/               # pipeline run logs per taxi type
+│   │   ├── yellow/               # processed output, partitioned by pickup_date
+│   │   ├── green/                # processed output, partitioned by pickup_date
+│   │   ├── fhv/                  # processed output, partitioned by pickup_date
+│   │   └── hvfhv/                # processed output, partitioned by pickup_date
+│   └── logs/                     # pipeline run logs per taxi type
 ├── spark/
 │   └── jobs/
 │       ├── ingest_yellow.ipynb   # Yellow Taxi ingestion notebook
@@ -35,13 +37,45 @@ NYC_TLC_PIPELINE/
 │       ├── ingest_fhv.ipynb      # FHV ingestion notebook
 │       └── ingest_fhvhv.ipynb    # High-Volume FHV ingestion notebook
 ├── snowflake/
-│   └── nyc_tlc_setup.sql   # Snowflake environment setup and raw table definitions
+│   └── nyc_tlc_setup.sql         # Snowflake environment setup and raw table definitions
+├── nyc_tlc/                      # dbt project
+│   ├── models/
+│   │   ├── staging/              # views over RAW tables (rename, cast, add trip_type)
+│   │   │   ├── source.yml
+│   │   │   ├── stg_yellow_trips.sql
+│   │   │   ├── stg_green_trips.sql
+│   │   │   ├── stg_fhv_trips.sql        # ⏳ in progress
+│   │   │   └── stg_hvfhv_trips.sql      # ⏳ pending
+│   │   ├── intermediate/         # UNION ALL of all trip types
+│   │   │   └── int_all_trips_unioned.sql  # ⏳ pending
+│   │   ├── dim/                  # dimension tables from seeds
+│   │   │   ├── dim_taxi_zones.sql         # ⏳ pending
+│   │   │   ├── dim_vendors.sql            # ⏳ pending
+│   │   │   ├── dim_rate_codes.sql         # ⏳ pending
+│   │   │   ├── dim_payment_types.sql      # ⏳ pending
+│   │   │   └── dim_hvfhv_bases.sql        # ⏳ pending
+│   │   ├── fct/                  # incremental fact table
+│   │   │   └── fct_trips.sql              # ⏳ pending
+│   │   └── marts/                # aggregated BI-ready tables
+│   │       ├── mart_daily_summary.sql     # ⏳ pending
+│   │       ├── mart_zone_performance.sql  # ⏳ pending
+│   │       └── mart_revenue_breakdown.sql # ⏳ pending
+│   ├── macros/
+│   │   └── safe_divide.sql               # null-safe division macro
+│   ├── seeds/
+│   │   ├── taxi_zone_lookup.csv          # 265 NYC taxi zones
+│   │   ├── vendors.csv                   # taxi vendor codes
+│   │   ├── rate_codes.csv                # rate code labels
+│   │   ├── payment_types.csv             # payment type labels
+│   │   └── hvfhv_bases.csv               # Uber/Lyft/Via/Juno platform codes
+│   ├── packages.yml                      # dbt_utils dependency
+│   └── dbt_project.yml                   # project config and materializations
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
-├── pyproject.toml          # project dependencies
-├── .env                    # local environment variables (git-ignored)
-├── .env.example            # environment variable template (committed)
+├── pyproject.toml                # project dependencies
+├── .env                          # local environment variables (git-ignored)
+├── .env.example                  # environment variable template (committed)
 └── uv.lock
 ```
 
@@ -311,6 +345,85 @@ Creates one raw table per taxi type, mirroring the schema written by the Spark p
 Each table is loaded with `COPY INTO ... MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE` so column ordering in the parquet files does not matter. Files that fail to load are skipped (`ON_ERROR = 'SKIP_FILE'`) rather than aborting the entire copy. After loading, a `UPDATE ... SET pickup_date = TO_DATE(...)` backfills any rows where the partition date column arrived as `NULL`.
 
 `INFER_SCHEMA` queries are included for FHV and HVFHV as a diagnostic aid — they print the column names and types that Snowflake detects directly from the parquet files, useful for verifying schema alignment before or after a load.
+
+## dbt Transformation Layer
+
+The dbt project lives in [`nyc_tlc/`](nyc_tlc/) and transforms raw Snowflake tables through four layers: staging → intermediate → dimensions/facts → marts.
+
+### Snowflake Schemas (dbt target: `NYC`)
+
+| dbt folder | Snowflake schema | Materialization |
+|---|---|---|
+| `staging/` | `TLC.NYC_STAGING` | view |
+| `intermediate/` | `TLC.NYC_INTERMEDIATE` | view |
+| `dim/` | `TLC.NYC_DIMENSIONS` | table |
+| `fct/` | `TLC.NYC_FACTS` | table |
+| `marts/` | `TLC.NYC_MARTS` | table |
+| `seeds/` | `TLC.NYC_LOOKUP` | table |
+
+### Seeds
+
+Five static reference tables loaded into `TLC.NYC_LOOKUP`:
+
+| File | Rows | Purpose |
+|---|---|---|
+| `taxi_zone_lookup.csv` | 265 | Maps LocationID to zone name and borough |
+| `vendors.csv` | 3 | Maps VendorID 1/2/7 to vendor names (7=Unknown) |
+| `rate_codes.csv` | 6 | Maps RatecodeID 1-6 to labels |
+| `payment_types.csv` | 6 | Maps payment_type 1-6 to labels |
+| `hvfhv_bases.csv` | 4 | Maps hvfhs_license_num to platform name (Uber/Lyft/Via/Juno) |
+
+### Macros
+
+| Macro | Purpose |
+|---|---|
+| `safe_divide(numerator, denominator)` | Null-safe division using `NULLIF` — prevents division-by-zero errors |
+
+### Models — Current Status
+
+| Model | Status | Notes |
+|---|---|---|
+| `staging/source.yml` | ✅ Done | Declares 4 RAW source tables |
+| `staging/stg_yellow_trips.sql` | ✅ Done | Renames tpep_ columns, adds trip_type='yellow' |
+| `staging/stg_green_trips.sql` | ✅ Done | Renames lpep_ columns, green_trip_type, adds trip_type='green' |
+| `staging/stg_fhv_trips.sql` | 🔄 In Progress | No fare columns, fixes PUlocationID casing |
+| `staging/stg_hvfhv_trips.sql` | ⏳ Pending | Renames base_passenger_fare, tips, tolls |
+| `intermediate/int_all_trips_unioned.sql` | ⏳ Pending | UNION ALL of yellow + green + hvfhv |
+| `dim/dim_taxi_zones.sql` | ⏳ Pending | From seed |
+| `dim/dim_vendors.sql` | ⏳ Pending | From seed |
+| `dim/dim_rate_codes.sql` | ⏳ Pending | From seed |
+| `dim/dim_payment_types.sql` | ⏳ Pending | From seed |
+| `dim/dim_hvfhv_bases.sql` | ⏳ Pending | From seed |
+| `fct/fct_trips.sql` | ⏳ Pending | Incremental, surrogate key via dbt_utils |
+| `marts/mart_daily_summary.sql` | ⏳ Pending | Aggregates by pickup_date |
+| `marts/mart_zone_performance.sql` | ⏳ Pending | Aggregates by pickup zone |
+| `marts/mart_revenue_breakdown.sql` | ⏳ Pending | Revenue split by trip_type |
+
+### Running dbt
+
+```bash
+cd nyc_tlc
+
+# load seed tables
+dbt seed
+
+# run all models
+dbt run
+
+# run a specific layer
+dbt run --select staging
+dbt run --select intermediate
+dbt run --select dim
+dbt run --select fct
+dbt run --select marts
+
+# run tests
+dbt test
+
+# generate and serve docs
+dbt docs generate
+dbt docs serve
+```
 
 ## Development
 

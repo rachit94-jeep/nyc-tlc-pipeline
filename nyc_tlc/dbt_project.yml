@@ -13,13 +13,36 @@ seeds:
   # Builds seeds into '<your_schema_name>_raw'
   nyc_tlc:
     +schema: LOOKUP
+    hvfhv_bases:
+      +column_types:
+        hvfhs_license_num: varchar(6)
+        base_name: varchar(50)
+        base_type: varchar(20)
+    rate_codes:
+      +column_types:
+        rate_code_id: integer
+    payment_types:
+      +column_types:
+        payment_type_id: integer
+    vendors:
+      +column_types:
+        vendor_id: integer
 
 models:
   nyc_tlc:
-    +static_analysis: strict
-    +schema: STAGING
     # Materialize staging models as views, and marts as tables
     staging:
+      +materialized: view
+      +schema: STAGING
+    intermediate:
+      +materialized: view
+      +schema: INTERMEDIATE
+    fct:
       +materialized: table
+      +schema: FACTS
+    dim:
+      +materialized: table
+      +schema: DIMENSIONS
     marts:
       +materialized: table
+      +schema: MARTS

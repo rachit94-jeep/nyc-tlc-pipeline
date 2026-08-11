@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: raw
+    database: TLC
+    schema: RAW
+    tables:
+      - name: raw_yellow_trips
+        identifier: yellow_taxi_trips
+        description: "Raw Yellow Taxi trip records ingested from S3 via Snowflake COPY INTO"
+
+      - name: raw_green_trips
+        identifier: green_taxi_trips
+        description: "Raw Green Taxi trip records ingested from S3 via Snowflake COPY INTO"
+
+      - name: raw_fhv_trips
+        identifier: fhv_trips
+        description: "Raw FHV (For-Hire Vehicle) trip records ingested from S3 via Snowflake COPY INTO"
+
+      - name: raw_hvfhv_trips
+        identifier: fhvhv_trips
+        description: "Raw HVFHV (Uber/Lyft) trip records ingested from S3 via Snowflake COPY INTO"

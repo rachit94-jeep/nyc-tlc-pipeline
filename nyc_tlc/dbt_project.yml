@@ -37,7 +37,7 @@ models:
     intermediate:
       +materialized: view
       +schema: INTERMEDIATE
-    fct:
+    facts:
       +materialized: table
       +schema: FACTS
     dim:

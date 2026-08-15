@@ -44,16 +44,16 @@ NYC_TLC_PIPELINE/
 │   │   │   ├── source.yml
 │   │   │   ├── stg_yellow_trips.sql
 │   │   │   ├── stg_green_trips.sql
-│   │   │   ├── stg_fhv_trips.sql        # ⏳ in progress
-│   │   │   └── stg_hvfhv_trips.sql      # ⏳ pending
+│   │   │   ├── stg_fhv_trips.sql
+│   │   │   └── stg_hvfhv_trips.sql
 │   │   ├── intermediate/         # UNION ALL of all trip types
-│   │   │   └── int_all_trips_unioned.sql  # ⏳ pending
+│   │   │   └── int_all_trips_unioned.sql
 │   │   ├── dim/                  # dimension tables from seeds
-│   │   │   ├── dim_taxi_zones.sql         # ⏳ pending
-│   │   │   ├── dim_vendors.sql            # ⏳ pending
-│   │   │   ├── dim_rate_codes.sql         # ⏳ pending
-│   │   │   ├── dim_payment_types.sql      # ⏳ pending
-│   │   │   └── dim_hvfhv_bases.sql        # ⏳ pending
+│   │   │   ├── dim_taxi_zones.sql
+│   │   │   ├── dim_vendors.sql
+│   │   │   ├── dim_rate_codes.sql
+│   │   │   ├── dim_payment_types.sql
+│   │   │   └── dim_hvfhv_bases.sql
 │   │   ├── fct/                  # incremental fact table
 │   │   │   └── fct_trips.sql              # ⏳ pending
 │   │   └── marts/                # aggregated BI-ready tables
@@ -386,15 +386,15 @@ Five static reference tables loaded into `TLC.NYC_LOOKUP`:
 | `staging/source.yml` | ✅ Done | Declares 4 RAW source tables |
 | `staging/stg_yellow_trips.sql` | ✅ Done | Renames tpep_ columns, adds trip_type='yellow' |
 | `staging/stg_green_trips.sql` | ✅ Done | Renames lpep_ columns, green_trip_type, adds trip_type='green' |
-| `staging/stg_fhv_trips.sql` | 🔄 In Progress | No fare columns, fixes PUlocationID casing |
-| `staging/stg_hvfhv_trips.sql` | ⏳ Pending | Renames base_passenger_fare, tips, tolls |
-| `intermediate/int_all_trips_unioned.sql` | ⏳ Pending | UNION ALL of yellow + green + hvfhv |
-| `dim/dim_taxi_zones.sql` | ⏳ Pending | From seed |
-| `dim/dim_vendors.sql` | ⏳ Pending | From seed |
-| `dim/dim_rate_codes.sql` | ⏳ Pending | From seed |
-| `dim/dim_payment_types.sql` | ⏳ Pending | From seed |
-| `dim/dim_hvfhv_bases.sql` | ⏳ Pending | From seed |
-| `fct/fct_trips.sql` | ⏳ Pending | Incremental, surrogate key via dbt_utils |
+| `staging/stg_fhv_trips.sql` | ✅ Done | No fare columns, fixes PUlocationID casing |
+| `staging/stg_hvfhv_trips.sql` | ✅ Done | Renames base_passenger_fare, tips, tolls |
+| `intermediate/int_all_trips_unioned.sql` | ✅ Done | UNION ALL of yellow + green + hvfhv |
+| `dim/dim_taxi_zones.sql` | ✅ Done | From seed |
+| `dim/dim_vendors.sql` | ✅ Done | From seed |
+| `dim/dim_rate_codes.sql` | ✅ Done | From seed |
+| `dim/dim_payment_types.sql` | ✅ Done | From seed |
+| `dim/dim_hvfhv_bases.sql` | ✅ Done | From seed |
+| `fct/fct_trips.sql` | ✅ Done | Incremental, surrogate key via dbt_utils, ROW_NUMBER() dedup |
 | `marts/mart_daily_summary.sql` | ⏳ Pending | Aggregates by pickup_date |
 | `marts/mart_zone_performance.sql` | ⏳ Pending | Aggregates by pickup zone |
 | `marts/mart_revenue_breakdown.sql` | ⏳ Pending | Revenue split by trip_type |

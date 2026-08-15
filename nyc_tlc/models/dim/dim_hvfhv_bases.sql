@@ -1,0 +1,1 @@
+SELECT * FROM {{ref('hvfhv_bases')}}

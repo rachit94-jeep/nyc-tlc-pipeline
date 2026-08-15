@@ -1,0 +1,1 @@
+SELECT * FROM {{ref('rate_codes')}}

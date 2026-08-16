@@ -57,9 +57,9 @@ NYC_TLC_PIPELINE/
 │   │   ├── fct/                  # incremental fact table
 │   │   │   └── fct_trips.sql              # ⏳ pending
 │   │   └── marts/                # aggregated BI-ready tables
-│   │       ├── mart_daily_summary.sql     # ⏳ pending
-│   │       ├── mart_zone_performance.sql  # ⏳ pending
-│   │       └── mart_revenue_breakdown.sql # ⏳ pending
+│   │       ├── mart_daily_summary.sql
+│   │       ├── mart_zone_performance.sql
+│   │       └── mart_revenue_breakdown.sql
 │   ├── macros/
 │   │   └── safe_divide.sql               # null-safe division macro
 │   ├── seeds/
@@ -395,9 +395,17 @@ Five static reference tables loaded into `TLC.NYC_LOOKUP`:
 | `dim/dim_payment_types.sql` | ✅ Done | From seed |
 | `dim/dim_hvfhv_bases.sql` | ✅ Done | From seed |
 | `fct/fct_trips.sql` | ✅ Done | Incremental, surrogate key via dbt_utils, ROW_NUMBER() dedup |
-| `marts/mart_daily_summary.sql` | ⏳ Pending | Aggregates by pickup_date |
-| `marts/mart_zone_performance.sql` | ⏳ Pending | Aggregates by pickup zone |
-| `marts/mart_revenue_breakdown.sql` | ⏳ Pending | Revenue split by trip_type |
+| `marts/mart_daily_summary.sql` | ✅ Done | Aggregates by pickup_date |
+| `marts/mart_zone_performance.sql` | ✅ Done | Aggregates by pickup zone |
+| `marts/mart_revenue_breakdown.sql` | ✅ Done | Revenue split by trip_type |
+
+### Mart Tables
+
+| Mart | Schema | Description |
+|---|---|---|
+| `mart_daily_summary` | `TLC.NYC_MARTS` | Daily trip metrics aggregated by `pickup_date` and `trip_type`. Tracks trip count, average fare, average distance, average duration, and total revenue. Primary table for daily trend dashboards. |
+| `mart_zone_performance` | `TLC.NYC_MARTS` | Pickup zone performance aggregated by `pu_location_id`, `zone`, and `borough`. Shows trip volume and revenue per zone — used to identify top and bottom performing pickup areas across NYC. |
+| `mart_revenue_breakdown` | `TLC.NYC_MARTS` | Revenue components split by `trip_type` and `pickup_date`. Breaks down fare, tips, tolls, congestion surcharge, and airport fees into separate totals — used for revenue attribution analysis across Yellow, Green, and HVFHV trips. |
 
 ### Running dbt
 

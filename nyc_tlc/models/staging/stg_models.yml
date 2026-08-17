@@ -1,0 +1,92 @@
+version: 2
+
+
+
+models:
+    - name: stg_yellow_trips
+      description: "Staged yellow taxi trips — renames tpep_ columns, casts types, adds trip_type='yellow'"
+      columns:
+        - name: pickup_datetime
+          description: "Trip Pickup Timestamp"
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: "Trip dropoff timestamp"
+          tests:
+            - not_null
+        - name: pu_location_id
+          description: "TLC pickup location ID"
+          tests:
+            - not_null
+        - name: trip_type
+          description: "Source dataset identifier"
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['yellow'] 
+
+    - name: stg_green_trips
+      description: "Staged green taxi trips — renames lpep_ columns, casts types, adds trip_type='green'"
+      columns:
+        - name: pickup_datetime
+          description: "Trip Pickup Timestamp"
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: "Trip dropoff timestamp"
+          tests:
+            - not_null
+        - name: pu_location_id
+          description: "TLC pickup location ID"
+          tests:
+            - not_null
+        - name: trip_type
+          description: "Source dataset identifier"
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['green']
+
+    - name: stg_fhv_trips
+      description: "Staged FHV trips - standardizes column names, adds trip_type = 'fhv'.No Fare Columns"
+      columns:
+        - name: pickup_datetime
+          description: "Trip Pickup Timestamp"
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: "Trip dropoff timestamp"
+          tests:
+            - not_null
+        - name: trip_type
+          description: "Source dataset identifier"
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['fhv']
+
+    - name: stg_hvfhv_trips
+      description: "Staged HVFHV trips — renames fare/tip/toll columns, adds trip_type='hvfhv'"
+      columns:
+        - name: pickup_datetime
+          description: "Trip pickup timestamp"
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: "Trip dropoff timestamp"
+          tests:
+            - not_null
+        - name: pu_location_id
+          description: "TLC pickup location ID"
+          tests:
+            - not_null
+        - name: trip_type
+          description: "Source dataset identifier"
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['hvfhv']

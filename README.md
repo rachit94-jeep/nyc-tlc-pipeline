@@ -54,8 +54,8 @@ NYC_TLC_PIPELINE/
 │   │   │   ├── dim_rate_codes.sql
 │   │   │   ├── dim_payment_types.sql
 │   │   │   └── dim_hvfhv_bases.sql
-│   │   ├── fct/                  # incremental fact table
-│   │   │   └── fct_trips.sql              # ⏳ pending
+│   │   ├── facts/                # incremental fact table
+│   │   │   └── fct_trips.sql
 │   │   └── marts/                # aggregated BI-ready tables
 │   │       ├── mart_daily_summary.sql
 │   │       ├── mart_zone_performance.sql
@@ -357,7 +357,7 @@ The dbt project lives in [`nyc_tlc/`](nyc_tlc/) and transforms raw Snowflake tab
 | `staging/` | `TLC.NYC_STAGING` | view |
 | `intermediate/` | `TLC.NYC_INTERMEDIATE` | view |
 | `dim/` | `TLC.NYC_DIMENSIONS` | table |
-| `fct/` | `TLC.NYC_FACTS` | table |
+| `facts/` | `TLC.NYC_FACTS` | table |
 | `marts/` | `TLC.NYC_MARTS` | table |
 | `seeds/` | `TLC.NYC_LOOKUP` | table |
 
@@ -394,7 +394,7 @@ Five static reference tables loaded into `TLC.NYC_LOOKUP`:
 | `dim/dim_rate_codes.sql` | ✅ Done | From seed |
 | `dim/dim_payment_types.sql` | ✅ Done | From seed |
 | `dim/dim_hvfhv_bases.sql` | ✅ Done | From seed |
-| `fct/fct_trips.sql` | ✅ Done | Incremental, surrogate key via dbt_utils, ROW_NUMBER() dedup |
+| `facts/fct_trips.sql` | ✅ Done | Incremental, surrogate key via dbt_utils, ROW_NUMBER() dedup |
 | `marts/mart_daily_summary.sql` | ✅ Done | Aggregates by pickup_date |
 | `marts/mart_zone_performance.sql` | ✅ Done | Aggregates by pickup zone |
 | `marts/mart_revenue_breakdown.sql` | ✅ Done | Revenue split by trip_type |

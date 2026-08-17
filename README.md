@@ -42,6 +42,7 @@ NYC_TLC_PIPELINE/
 │   ├── models/
 │   │   ├── staging/              # views over RAW tables (rename, cast, add trip_type)
 │   │   │   ├── source.yml
+│   │   │   ├── stg_models.yml        # tests + column docs for all staging models
 │   │   │   ├── stg_yellow_trips.sql
 │   │   │   ├── stg_green_trips.sql
 │   │   │   ├── stg_fhv_trips.sql

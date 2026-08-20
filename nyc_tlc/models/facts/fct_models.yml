@@ -1,0 +1,30 @@
+version: 2
+
+models:
+    - name: fct_trips
+      description: "incremental fact table, UNION ALL of yellow/green/hvfhv, surrogate key via dbt_utils, ROW_NUMBER() dedup"
+      columns:
+        - name: trip_id
+          description: Generated Trip ID
+          tests:
+            - unique
+            - not_null
+        - name: pickup_datetime
+          description: Pickup Datetime
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: Dropoff Datetime
+          tests:
+            - not_null
+        - name: trip_type
+          description: Trip Type
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['yellow','green','hvfhv']
+        - name: source_file
+          description: Source File Name
+          tests:
+            - not_null

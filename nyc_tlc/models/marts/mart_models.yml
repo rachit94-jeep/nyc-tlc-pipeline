@@ -1,0 +1,48 @@
+version: 2
+
+
+models:
+    - name: mart_daily_summary
+      description: Daily trip metrics aggregated by pickup_date and trip_type — trip count, avg fare, avg distance, avg duration, total revenue
+      columns:
+        - name: pickup_date
+          description: Pickup Date
+          tests:
+            - not_null
+        
+        - name: trip_type
+          description: Trip Type
+          tests:
+            - not_null
+
+    - name: mart_zone_performance
+      description: Pickup zone metrics aggregated by location, zone, and borough — trip volume and revenue per NYC zone
+      columns:
+        - name: pu_location_id
+          description: Pickup Location Id
+          tests:
+            - not_null
+        
+        - name: zone
+          description: Pickup Zone
+          tests:
+            - not_null
+        
+        - name: borough
+          description: NYC administrative division
+          tests:
+            - not_null
+
+    - name: mart_revenue_breakdown
+      description: Revenue components split by trip_type and pickup_date — fare, tips, tolls, congestion surcharge, and airport fees
+      columns:
+        - name: pickup_date
+          description: Pickup Date
+          tests:
+            - not_null
+        
+        - name: trip_type
+          description: Trip Type
+          tests:
+            - not_null
+    

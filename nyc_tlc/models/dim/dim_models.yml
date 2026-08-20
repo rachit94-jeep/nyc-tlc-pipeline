@@ -1,0 +1,48 @@
+version: 2
+
+
+models:
+    - name: dim_taxi_zones
+      description: "Maps TLC LocationID to zone name and borough across all 265 NYC taxi zones"
+      columns:
+        - name: locationid
+          description: Location ID
+          tests:
+            - unique
+            - not_null
+    
+    - name: dim_rate_codes
+      description: "Maps RatecodeID 1–6 to rate labels (Standard, JFK, Newark, etc.)"
+      columns:
+        - name: rate_code_id
+          description: Rate Code ID
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_vendors
+      description: "Maps VendorID to vendor name (1=CMT, 2=VeriFone, 7=Unknown)"
+      columns:
+        - name: vendor_id
+          description: Vendor ID
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_payment_types
+      description: "Maps payment_type 1–6 to payment method labels (Credit card, Cash, etc.)"
+      columns:
+        - name: payment_type_id
+          description: Payment Type ID
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_hvfhv_bases
+      description: "Maps HVFHV license numbers to platform names (Uber, Lyft, Via, Juno)"
+      columns:
+        - name: hvfhs_license_num
+          description: License Number
+          tests:
+            - unique
+            - not_null

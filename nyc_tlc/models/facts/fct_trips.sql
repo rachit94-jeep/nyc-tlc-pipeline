@@ -7,7 +7,7 @@ WITH deduplicated AS (
     SELECT *,
         ROW_NUMBER() OVER (
             PARTITION BY pickup_datetime, dropoff_datetime, pu_location_id, 
-                         do_location_id, trip_type, source_file
+                         do_location_id, trip_type, source_file,fare_amount
             ORDER BY ingestion_timestamp DESC
         ) AS row_num
     FROM {{ ref('int_all_trips_unioned') }}
@@ -22,7 +22,7 @@ fct_trips AS (
         {{ dbt_utils.generate_surrogate_key([
             'pickup_datetime', 'dropoff_datetime',
             'pu_location_id', 'do_location_id',
-            'trip_type', 'source_file'
+            'trip_type', 'source_file','fare_amount'
         ]) }} AS trip_id,
         * EXCLUDE (row_num)
     FROM deduplicated

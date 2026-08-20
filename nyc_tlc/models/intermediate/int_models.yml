@@ -1,0 +1,25 @@
+version: 2
+
+models: 
+    - name: int_all_trips_unioned
+      description: Union of yellow,green and hvfhv trips, excluded FHV
+      columns:
+        - name: pickup_datetime
+          description: Pickup Datetime
+          tests:
+            - not_null
+        - name: dropoff_datetime
+          description: Dropoff Datetime
+          tests:
+            - not_null
+        - name: source_file
+          description: Source file name
+          tests:
+            - not_null
+        - name: trip_type
+          description: Trip Type
+          tests:
+            - not_null
+            - accepted_values:
+                arguments:
+                    values: ['yellow', 'green', 'hvfhv']

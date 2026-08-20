@@ -48,16 +48,20 @@ NYC_TLC_PIPELINE/
 │   │   │   ├── stg_fhv_trips.sql
 │   │   │   └── stg_hvfhv_trips.sql
 │   │   ├── intermediate/         # UNION ALL of all trip types
+│   │   │   ├── int_models.yml        # tests + column docs
 │   │   │   └── int_all_trips_unioned.sql
 │   │   ├── dim/                  # dimension tables from seeds
+│   │   │   ├── dim_models.yml        # tests + column docs
 │   │   │   ├── dim_taxi_zones.sql
 │   │   │   ├── dim_vendors.sql
 │   │   │   ├── dim_rate_codes.sql
 │   │   │   ├── dim_payment_types.sql
 │   │   │   └── dim_hvfhv_bases.sql
 │   │   ├── facts/                # incremental fact table
+│   │   │   ├── fct_models.yml        # tests + column docs
 │   │   │   └── fct_trips.sql
 │   │   └── marts/                # aggregated BI-ready tables
+│   │       ├── mart_models.yml       # tests + column docs
 │   │       ├── mart_daily_summary.sql
 │   │       ├── mart_zone_performance.sql
 │   │       └── mart_revenue_breakdown.sql
@@ -385,17 +389,22 @@ Five static reference tables loaded into `TLC.NYC_LOOKUP`:
 | Model | Status | Notes |
 |---|---|---|
 | `staging/source.yml` | ✅ Done | Declares 4 RAW source tables |
+| `staging/stg_models.yml` | ✅ Done | Tests + docs for all 4 staging models |
 | `staging/stg_yellow_trips.sql` | ✅ Done | Renames tpep_ columns, adds trip_type='yellow' |
 | `staging/stg_green_trips.sql` | ✅ Done | Renames lpep_ columns, green_trip_type, adds trip_type='green' |
 | `staging/stg_fhv_trips.sql` | ✅ Done | No fare columns, fixes PUlocationID casing |
 | `staging/stg_hvfhv_trips.sql` | ✅ Done | Renames base_passenger_fare, tips, tolls |
+| `intermediate/int_models.yml` | ✅ Done | Tests + docs for int_all_trips_unioned |
 | `intermediate/int_all_trips_unioned.sql` | ✅ Done | UNION ALL of yellow + green + hvfhv |
+| `dim/dim_models.yml` | ✅ Done | Tests + docs for all 5 dimension models |
 | `dim/dim_taxi_zones.sql` | ✅ Done | From seed |
 | `dim/dim_vendors.sql` | ✅ Done | From seed |
 | `dim/dim_rate_codes.sql` | ✅ Done | From seed |
 | `dim/dim_payment_types.sql` | ✅ Done | From seed |
 | `dim/dim_hvfhv_bases.sql` | ✅ Done | From seed |
+| `facts/fct_models.yml` | ✅ Done | unique + not_null on trip_id, accepted_values on trip_type |
 | `facts/fct_trips.sql` | ✅ Done | Incremental, surrogate key via dbt_utils, ROW_NUMBER() dedup |
+| `marts/mart_models.yml` | ✅ Done | Tests + docs for all 3 mart models |
 | `marts/mart_daily_summary.sql` | ✅ Done | Aggregates by pickup_date |
 | `marts/mart_zone_performance.sql` | ✅ Done | Aggregates by pickup zone |
 | `marts/mart_revenue_breakdown.sql` | ✅ Done | Revenue split by trip_type |

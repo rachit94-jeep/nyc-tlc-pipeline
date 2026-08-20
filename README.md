@@ -432,16 +432,23 @@ dbt run
 dbt run --select staging
 dbt run --select intermediate
 dbt run --select dim
-dbt run --select fct
+dbt run --select facts
 dbt run --select marts
 
 # run tests
 dbt test
 
-# generate and serve docs
-dbt docs generate
+# generate docs (dbt-fusion 2.0 — replaces dbt docs generate)
+dbt compile --write-catalog --write-index
 dbt docs serve
+# then open the URL shown in the terminal (default: http://localhost:8080)
 ```
+
+### dbt Docs Output
+
+![dbt docs overview](nyc_tlc/docs/dbt_docs_overview.png)
+
+The docs UI shows 14 models, 4 sources, 48 tests, and 5 seeds across the `nyc_tlc` project running on dbt-fusion v2.0.0 with the Snowflake adapter.
 
 ## Development
 
